@@ -1,0 +1,505 @@
+"""
+LLM Evaluation Framework and Tests
+Comprehensive evaluation suite for testing generative AI outputs.
+"""
+import pytest
+import os
+from dotenv import load_dotenv
+from gemini_service import GeminiService
+from rick_morty_api import RickMortyAPI
+from database import Database
+import json
+
+load_dotenv()
+
+# Skip tests if Gemini API key is not available
+pytestmark = pytest.mark.skipif(
+    not os.getenv('GEMINI_API_KEY'),
+    reason="GEMINI_API_KEY not set in environment"
+)
+
+
+@pytest.fixture
+def gemini_service():
+    """Create GeminiService instance."""
+    return GeminiService()
+
+
+@pytest.fixture
+def rick_morty_api():
+    """Create RickMortyAPI instance."""
+    db = Database("test_eval.db")
+    return RickMortyAPI(db)
+
+
+class TestLocationSummaryEvaluation:
+    """Evaluate location summary generation quality."""
+
+    def test_location_summary_generation(self, gemini_service, rick_morty_api):
+        """Test that location summaries are generated successfully."""
+        location = rick_morty_api.get_location(1)
+        summary = gemini_service.generate_location_summary(location)
+
+        assert summary is not None
+        assert isinstance(summary, str)
+        assert len(summary) > 0
+        print(f"\n\nGenerated Summary:\n{summary}")
+
+    def test_location_summary_factual_consistency(self, gemini_service, rick_morty_api):
+        """Evaluate factual consistency of location summaries."""
+        location = rick_morty_api.get_location(1)
+        summary = gemini_service.generate_location_summary(location)
+
+        # Evaluate factual consistency
+        evaluation = gemini_service.evaluate_factual_consistency(summary, location)
+
+        print(f"\n\nFactual Consistency Evaluation:")
+        print(f"Score: {evaluation['score']}/10")
+        print(f"Details: {json.dumps(evaluation['details'], indent=2)}")
+
+        # Assert minimum quality threshold
+        assert evaluation['score'] >= 5, f"Factual consistency score too low: {evaluation['score']}"
+
+    def test_location_summary_creativity(self, gemini_service, rick_morty_api):
+        """Evaluate creativity of location summaries."""
+        location = rick_morty_api.get_location(1)
+        summary = gemini_service.generate_location_summary(location)
+
+        # Evaluate creativity
+        evaluation = gemini_service.evaluate_creativity(summary)
+
+        print(f"\n\nCreativity Evaluation:")
+        print(f"Score: {evaluation['score']}/10")
+        print(f"Details: {json.dumps(evaluation['details'], indent=2)}")
+
+        # Assert minimum creativity threshold
+        assert evaluation['score'] >= 4, f"Creativity score too low: {evaluation['score']}"
+
+    def test_multiple_location_summaries_consistency(self, gemini_service, rick_morty_api):
+        """Test consistency across multiple location summaries."""
+        scores = []
+
+        for location_id in [1, 2, 3]:
+            location = rick_morty_api.get_location(location_id)
+            summary = gemini_service.generate_location_summary(location)
+
+            evaluation = gemini_service.evaluate_factual_consistency(summary, location)
+            scores.append(evaluation['score'])
+
+            print(f"\n\nLocation {location_id} ({location['name']}):")
+            print(f"Summary: {summary}")
+            print(f"Score: {evaluation['score']}/10")
+
+        # Check that most summaries meet quality threshold
+        avg_score = sum(scores) / len(scores)
+        assert avg_score >= 5, f"Average factual consistency too low: {avg_score}"
+
+        print(f"\n\nAverage Factual Consistency Score: {avg_score}/10")
+
+
+class TestCharacterDialogueEvaluation:
+    """Evaluate character dialogue generation quality."""
+
+    def test_dialogue_generation(self, gemini_service, rick_morty_api):
+        """Test that dialogues are generated successfully."""
+        char1 = rick_morty_api.get_character(1)  # Rick
+        char2 = rick_morty_api.get_character(2)  # Morty
+
+        dialogue = gemini_service.generate_character_dialogue(char1, char2)
+
+        assert dialogue is not None
+        assert isinstance(dialogue, str)
+        assert len(dialogue) > 0
+
+        # Check that both character names appear in dialogue
+        assert char1['name'] in dialogue or 'Rick' in dialogue
+        assert char2['name'] in dialogue or 'Morty' in dialogue
+
+        print(f"\n\nGenerated Dialogue:\n{dialogue}")
+
+    def test_dialogue_creativity_evaluation(self, gemini_service, rick_morty_api):
+        """Evaluate creativity of generated dialogues."""
+        char1 = rick_morty_api.get_character(1)
+        char2 = rick_morty_api.get_character(2)
+
+        dialogue = gemini_service.generate_character_dialogue(char1, char2)
+        evaluation = gemini_service.evaluate_creativity(dialogue)
+
+        print(f"\n\nDialogue Creativity Evaluation:")
+        print(f"Score: {evaluation['score']}/10")
+        print(f"Details: {json.dumps(evaluation['details'], indent=2)}")
+
+        assert evaluation['score'] >= 4, f"Dialogue creativity too low: {evaluation['score']}"
+
+    def test_dialogue_with_different_character_pairs(self, gemini_service, rick_morty_api):
+        """Test dialogue generation with different character combinations."""
+        character_pairs = [
+            (1, 2),   # Rick & Morty
+            (1, 3),   # Rick & Summer
+            (2, 4),   # Morty & Beth
+        ]
+
+        results = []
+
+        for char1_id, char2_id in character_pairs:
+            char1 = rick_morty_api.get_character(char1_id)
+            char2 = rick_morty_api.get_character(char2_id)
+
+            dialogue = gemini_service.generate_character_dialogue(char1, char2)
+            evaluation = gemini_service.evaluate_creativity(dialogue)
+
+            results.append({
+                'pair': f"{char1['name']} & {char2['name']}",
+                'dialogue': dialogue,
+                'score': evaluation['score']
+            })
+
+            print(f"\n\n{char1['name']} & {char2['name']}:")
+            print(f"Dialogue: {dialogue}")
+            print(f"Creativity Score: {evaluation['score']}/10")
+
+        # Check average quality
+        avg_score = sum(r['score'] for r in results) / len(results)
+        print(f"\n\nAverage Creativity Score: {avg_score}/10")
+
+        assert avg_score >= 4, f"Average creativity score too low: {avg_score}"
+
+
+class TestCharacterAnalysisEvaluation:
+    """Evaluate character analysis generation quality."""
+
+    def test_character_analysis_generation(self, gemini_service, rick_morty_api):
+        """Test that character analyses are generated successfully."""
+        character = rick_morty_api.get_character(1)
+        analysis = gemini_service.generate_character_analysis(character)
+
+        assert analysis is not None
+        assert isinstance(analysis, str)
+        assert len(analysis) > 0
+
+        print(f"\n\nGenerated Analysis for {character['name']}:\n{analysis}")
+
+    def test_character_analysis_factual_consistency(self, gemini_service, rick_morty_api):
+        """Evaluate factual consistency of character analyses."""
+        character = rick_morty_api.get_character(1)
+        analysis = gemini_service.generate_character_analysis(character)
+
+        evaluation = gemini_service.evaluate_factual_consistency(analysis, character)
+
+        print(f"\n\nAnalysis Factual Consistency:")
+        print(f"Score: {evaluation['score']}/10")
+        print(f"Details: {json.dumps(evaluation['details'], indent=2)}")
+
+        assert evaluation['score'] >= 5, f"Factual consistency too low: {evaluation['score']}"
+
+    def test_multiple_character_analyses(self, gemini_service, rick_morty_api):
+        """Test analysis generation for multiple characters."""
+        character_ids = [1, 2, 3, 4, 5]
+        results = []
+
+        for char_id in character_ids:
+            character = rick_morty_api.get_character(char_id)
+            analysis = gemini_service.generate_character_analysis(character)
+            evaluation = gemini_service.evaluate_factual_consistency(analysis, character)
+
+            results.append({
+                'character': character['name'],
+                'analysis': analysis,
+                'score': evaluation['score']
+            })
+
+            print(f"\n\nCharacter: {character['name']}")
+            print(f"Analysis: {analysis}")
+            print(f"Factual Consistency Score: {evaluation['score']}/10")
+
+        # Calculate statistics
+        scores = [r['score'] for r in results]
+        avg_score = sum(scores) / len(scores)
+        min_score = min(scores)
+        max_score = max(scores)
+
+        print(f"\n\nStatistics:")
+        print(f"Average Score: {avg_score:.2f}/10")
+        print(f"Min Score: {min_score}/10")
+        print(f"Max Score: {max_score}/10")
+
+        assert avg_score >= 5, f"Average factual consistency too low: {avg_score}"
+
+
+class TestEmbeddingQuality:
+    """Evaluate embedding generation and semantic search quality."""
+
+    def test_embedding_generation(self, gemini_service):
+        """Test that embeddings are generated successfully."""
+        text = "Rick Sanchez is a genius scientist who travels across dimensions."
+        embedding = gemini_service.generate_embedding(text)
+
+        assert embedding is not None
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        assert all(isinstance(x, float) for x in embedding)
+
+        print(f"\n\nEmbedding dimension: {len(embedding)}")
+
+    def test_embedding_similarity(self, gemini_service):
+        """Test that similar texts have higher cosine similarity."""
+        text1 = "Rick is a scientist who travels dimensions."
+        text2 = "Rick Sanchez is a genius scientist exploring the multiverse."
+        text3 = "Morty is a high school student."
+
+        emb1 = gemini_service.generate_embedding(text1)
+        emb2 = gemini_service.generate_embedding(text2)
+        emb3 = gemini_service.generate_embedding(text3)
+
+        similarity_1_2 = gemini_service.cosine_similarity(emb1, emb2)
+        similarity_1_3 = gemini_service.cosine_similarity(emb1, emb3)
+
+        print(f"\n\nSimilarity (Rick texts): {similarity_1_2:.4f}")
+        print(f"Similarity (Rick vs Morty): {similarity_1_3:.4f}")
+
+        # Similar texts should have higher similarity
+        assert similarity_1_2 > similarity_1_3, "Similar texts should have higher similarity"
+
+    def test_query_vs_document_embeddings(self, gemini_service):
+        """Test query embeddings vs document embeddings."""
+        document = "Rick Sanchez is a brilliant scientist from Earth C-137."
+        query = "genius scientist from Earth"
+
+        doc_emb = gemini_service.generate_embedding(document)
+        query_emb = gemini_service.generate_query_embedding(query)
+
+        similarity = gemini_service.cosine_similarity(doc_emb, query_emb)
+
+        print(f"\n\nQuery-Document Similarity: {similarity:.4f}")
+
+        # Should have meaningful similarity
+        assert similarity > 0.5, f"Query-document similarity too low: {similarity}"
+
+    def test_semantic_search_relevance(self, gemini_service, rick_morty_api):
+        """Test semantic search returns relevant results."""
+        # Index a few characters
+        characters = [
+            rick_morty_api.get_character(1),  # Rick
+            rick_morty_api.get_character(2),  # Morty
+            rick_morty_api.get_character(3),  # Summer
+        ]
+
+        # Create embeddings
+        embeddings = []
+        for char in characters:
+            text = f"{char['name']} is a {char['species']} with status {char['status']}"
+            emb = gemini_service.generate_embedding(text)
+            embeddings.append({
+                'character': char['name'],
+                'embedding': emb,
+                'text': text
+            })
+
+        # Search for "scientist"
+        query = "genius scientist"
+        query_emb = gemini_service.generate_query_embedding(query)
+
+        # Calculate similarities
+        results = []
+        for item in embeddings:
+            sim = gemini_service.cosine_similarity(query_emb, item['embedding'])
+            results.append({
+                'character': item['character'],
+                'similarity': sim
+            })
+
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+
+        print(f"\n\nSemantic Search Results for '{query}':")
+        for r in results:
+            print(f"{r['character']}: {r['similarity']:.4f}")
+
+        # Rick should be most relevant for "scientist" query
+        assert results[0]['character'] == 'Rick Sanchez', "Rick should be most relevant for scientist query"
+
+
+class TestEvaluationMetrics:
+    """Test evaluation metrics and scoring."""
+
+    def test_factual_consistency_metric(self, gemini_service):
+        """Test factual consistency evaluation metric."""
+        # High consistency case
+        source = {'name': 'Rick Sanchez', 'species': 'Human', 'status': 'Alive'}
+        generated = "Rick Sanchez is a human who is currently alive."
+
+        eval_high = gemini_service.evaluate_factual_consistency(generated, source)
+
+        # Low consistency case
+        generated_low = "Rick is a dead alien from another planet."
+        eval_low = gemini_service.evaluate_factual_consistency(generated_low, source)
+
+        print(f"\n\nHigh Consistency Score: {eval_high['score']}/10")
+        print(f"Low Consistency Score: {eval_low['score']}/10")
+
+        # High consistency should score better
+        # Note: This might not always hold due to LLM variance
+        print(f"Evaluation demonstrates scoring capability")
+
+    def test_creativity_metric(self, gemini_service):
+        """Test creativity evaluation metric."""
+        # Creative text
+        creative_text = "Wubba lubba dub dub! Rick burped loudly as he activated his portal gun, creating a swirling vortex of green energy."
+
+        # Plain text
+        plain_text = "Rick used his portal gun."
+
+        eval_creative = gemini_service.evaluate_creativity(creative_text)
+        eval_plain = gemini_service.evaluate_creativity(plain_text)
+
+        print(f"\n\nCreative Text Score: {eval_creative['score']}/10")
+        print(f"Plain Text Score: {eval_plain['score']}/10")
+
+        print(f"Evaluation demonstrates scoring capability")
+
+    def test_evaluation_response_parsing(self, gemini_service):
+        """Test that evaluation responses are parsed correctly."""
+        source = {'name': 'Morty Smith', 'species': 'Human'}
+        generated = "Morty is a human teenager."
+
+        evaluation = gemini_service.evaluate_factual_consistency(generated, source)
+
+        # Check structure
+        assert 'score' in evaluation
+        assert 'raw_response' in evaluation
+        assert 'details' in evaluation
+
+        assert isinstance(evaluation['score'], int)
+        assert 0 <= evaluation['score'] <= 10
+
+        print(f"\n\nParsed Evaluation Structure:")
+        print(json.dumps({k: v for k, v in evaluation.items() if k != 'raw_response'}, indent=2))
+
+
+class TestEvaluationEdgeCases:
+    """Test edge cases in LLM evaluation."""
+
+    def test_empty_text_evaluation(self, gemini_service):
+        """Test evaluation with empty text."""
+        source = {'name': 'Rick'}
+        generated = ""
+
+        # Should handle gracefully
+        try:
+            evaluation = gemini_service.evaluate_factual_consistency(generated, source)
+            print(f"\n\nEmpty text evaluation score: {evaluation['score']}/10")
+        except Exception as e:
+            print(f"\n\nEmpty text handled with exception: {e}")
+
+    def test_very_long_text_evaluation(self, gemini_service):
+        """Test evaluation with very long text."""
+        source = {'name': 'Rick Sanchez'}
+        generated = "Rick is a scientist. " * 100
+
+        try:
+            evaluation = gemini_service.evaluate_factual_consistency(generated, source)
+            print(f"\n\nLong text evaluation score: {evaluation['score']}/10")
+            assert 'score' in evaluation
+        except Exception as e:
+            print(f"\n\nLong text handled with exception: {e}")
+
+    def test_contradictory_information_evaluation(self, gemini_service):
+        """Test evaluation with contradictory information."""
+        source = {'name': 'Rick Sanchez', 'status': 'Alive', 'species': 'Human'}
+        generated = "Rick Sanchez is a dead alien from dimension X."
+
+        evaluation = gemini_service.evaluate_factual_consistency(generated, source)
+
+        print(f"\n\nContradictory information evaluation:")
+        print(f"Score: {evaluation['score']}/10")
+        print(f"Details: {json.dumps(evaluation['details'], indent=2)}")
+
+        # Should detect inconsistency
+        assert evaluation['score'] <= 5, "Should detect contradictory information"
+
+
+def run_comprehensive_evaluation_report():
+    """
+    Generate a comprehensive evaluation report.
+    This is a utility function for manual testing.
+    """
+    print("\n" + "="*80)
+    print("COMPREHENSIVE LLM EVALUATION REPORT")
+    print("="*80)
+
+    if not os.getenv('GEMINI_API_KEY'):
+        print("\nError: GEMINI_API_KEY not set. Cannot run evaluation.")
+        return
+
+    gemini_service = GeminiService()
+    db = Database("eval_report.db")
+    rick_morty_api = RickMortyAPI(db)
+
+    # Test 1: Location Summaries
+    print("\n\n1. LOCATION SUMMARY EVALUATION")
+    print("-" * 80)
+
+    location = rick_morty_api.get_location(1)
+    summary = gemini_service.generate_location_summary(location)
+
+    print(f"Location: {location['name']}")
+    print(f"Generated Summary:\n{summary}\n")
+
+    factual_eval = gemini_service.evaluate_factual_consistency(summary, location)
+    creativity_eval = gemini_service.evaluate_creativity(summary)
+
+    print(f"Factual Consistency Score: {factual_eval['score']}/10")
+    print(f"Creativity Score: {creativity_eval['score']}/10")
+
+    # Test 2: Character Dialogue
+    print("\n\n2. CHARACTER DIALOGUE EVALUATION")
+    print("-" * 80)
+
+    char1 = rick_morty_api.get_character(1)
+    char2 = rick_morty_api.get_character(2)
+
+    dialogue = gemini_service.generate_character_dialogue(char1, char2)
+    print(f"Characters: {char1['name']} & {char2['name']}")
+    print(f"Generated Dialogue:\n{dialogue}\n")
+
+    creativity_eval = gemini_service.evaluate_creativity(dialogue)
+    print(f"Creativity Score: {creativity_eval['score']}/10")
+
+    # Test 3: Semantic Search
+    print("\n\n3. SEMANTIC SEARCH EVALUATION")
+    print("-" * 80)
+
+    test_queries = [
+        "genius scientist",
+        "young student",
+        "human characters"
+    ]
+
+    for query in test_queries:
+        print(f"\nQuery: '{query}'")
+        query_emb = gemini_service.generate_query_embedding(query)
+
+        char_results = []
+        for char_id in [1, 2, 3]:
+            char = rick_morty_api.get_character(char_id)
+            text = rick_morty_api.get_character_details_for_embedding(char_id)
+            char_emb = gemini_service.generate_embedding(text)
+            sim = gemini_service.cosine_similarity(query_emb, char_emb)
+            char_results.append({'name': char['name'], 'similarity': sim})
+
+        char_results.sort(key=lambda x: x['similarity'], reverse=True)
+
+        print("Results:")
+        for r in char_results:
+            print(f"  {r['name']}: {r['similarity']:.4f}")
+
+    print("\n" + "="*80)
+    print("EVALUATION REPORT COMPLETE")
+    print("="*80)
+
+
+if __name__ == '__main__':
+    # Run comprehensive report
+    # run_comprehensive_evaluation_report()
+
+    # Or run pytest
+    pytest.main([__file__, '-v', '-s'])

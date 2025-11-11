@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rick & Morty AI Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --portal-green: #00d4aa;
+            --portal-green-dark: #00a085;
+            --space-blue: #1a1d29;
+            --space-blue-light: #2a2f42;
+            --morty-yellow: #f5d547;
+            --rick-blue: #87ceeb;
+            --danger-red: #e74c3c;
+            --success-green: #2ecc71;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1d29 0%, #2a2f42 50%, #1a1d29 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Animated stars background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 4s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(0, 160, 133, 0.05) 100%);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--portal-green);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0, 212, 170, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 212, 170, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-family: 'Creepster', cursive;
+            font-size: 3.5em;
+            color: var(--portal-green);
+            text-shadow: 0 0 20px rgba(0, 212, 170, 0.8), 0 0 40px rgba(0, 212, 170, 0.4);
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #ccc;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Quick Stats */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(42, 47, 66, 0.8) 0%, rgba(26, 29, 41, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--portal-green);
+            box-shadow: 0 10px 30px rgba(0, 212, 170, 0.3);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--portal-green);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #ccc;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        .nav-tab {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, rgba(42, 47, 66, 0.6) 0%, rgba(26, 29, 41, 0.6) 100%);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            color: #ccc;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab:hover {
+            border-color: var(--portal-green);
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--portal-green) 0%, var(--portal-green-dark) 100%);
+            border-color: var(--portal-green);
+            color: var(--space-blue);
+            box-shadow: 0 5px 20px rgba(0, 212, 170, 0.4);
+        }
+
+        /* Content Area */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Search Bar */
+        .search-container {
+            background: linear-gradient(135deg, rgba(42, 47, 66, 0.8) 0%, rgba(26, 29, 41, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        input, select {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 20px;
+            background: rgba(26, 29, 41, 0.8);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--portal-green);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        button {
+            padding: 15px 35px;
+            background: linear-gradient(135deg, var(--portal-green) 0%, var(--portal-green-dark) 100%);
+            border: none;
+            border-radius: 10px;
+            color: var(--space-blue);
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(0, 212, 170, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.5);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, rgba(135, 206, 235, 0.3) 0%, rgba(135, 206, 235, 0.2) 100%);
+            color: var(--rick-blue);
+        }
+
+        /* Custom Select Dropdown */
+        .custom-select {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .custom-select select {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(26, 29, 41, 0.8);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300d4aa' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            padding-right: 45px;
+        }
+
+        .custom-select select:focus {
+            outline: none;
+            border-color: var(--portal-green);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+        }
+
+        .custom-select select option {
+            background: #1a1d29;
+            color: #fff;
+            padding: 15px;
+        }
+
+        .custom-select select option:hover {
+            background: var(--portal-green);
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        /* Card Design */
+        .card {
+            background: linear-gradient(135deg, rgba(42, 47, 66, 0.9) 0%, rgba(26, 29, 41, 0.9) 100%);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 212, 170, 0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--portal-green);
+            box-shadow: 0 15px 40px rgba(0, 212, 170, 0.3);
+        }
+
+        .card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .card:hover img {
+            transform: scale(1.1);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--portal-green);
+            margin-bottom: 12px;
+        }
+
+        .card-text {
+            color: #ccc;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.alive {
+            background: var(--success-green);
+            color: white;
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+        }
+
+        .badge.dead {
+            background: var(--danger-red);
+            color: white;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        .badge.unknown {
+            background: #777;
+            color: white;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(42, 47, 66, 0.95) 0%, rgba(26, 29, 41, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--portal-green);
+            border-radius: 20px;
+            max-width: 900px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 20px;
+            box-shadow: 0 0 60px rgba(0, 212, 170, 0.5);
+        }
+
+        .modal-header {
+            padding: 25px;
+            border-bottom: 2px solid rgba(0, 212, 170, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .modal-header h2 {
+            color: var(--portal-green);
+            font-size: 2em;
+        }
+
+        .close-btn {
+            background: var(--danger-red);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .close-btn:hover {
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .character-detail {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .character-image {
+            width: 100%;
+            border-radius: 15px;
+            border: 3px solid var(--portal-green);
+            box-shadow: 0 10px 30px rgba(0, 212, 170, 0.3);
+        }
+
+        .detail-info p {
+            margin-bottom: 15px;
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+        }
+
+        .detail-info strong {
+            color: var(--portal-green);
+            min-width: 120px;
+        }
+
+        /* AI Output */
+        .ai-output {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(0, 160, 133, 0.05) 100%);
+            border-left: 5px solid var(--portal-green);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .ai-output h3 {
+            color: var(--portal-green);
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        /* Notes Section */
+        .notes-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid rgba(0, 212, 170, 0.3);
+        }
+
+        .note-item {
+            background: rgba(0, 212, 170, 0.05);
+            border-left: 3px solid var(--portal-green);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            background: rgba(26, 29, 41, 0.8);
+            border: 2px solid rgba(0, 212, 170, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--portal-green);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+        }
+
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.3em;
+            color: var(--portal-green);
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Alerts */
+        .error, .success, .info {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid;
+        }
+
+        .error {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: var(--danger-red);
+            color: #fff;
+        }
+
+        .success {
+            background: rgba(46, 204, 113, 0.1);
+            border-color: var(--success-green);
+            color: #fff;
+        }
+
+        .info {
+            background: rgba(135, 206, 235, 0.1);
+            border-color: var(--rick-blue);
+            color: #fff;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 212, 170, 0.3);
+        }
+
+        .section-header h2 {
+            color: var(--portal-green);
+            font-size: 2em;
+        }
+
+        .section-description {
+            color: #aaa;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2em;
+            }
+
+            .character-detail {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+            }
+
+            .nav-tab {
+                width: 100%;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Autocomplete */
+        .autocomplete {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 99;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(26, 29, 41, 0.98);
+            border: 2px solid var(--portal-green);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 10px 30px rgba(0, 212, 170, 0.3);
+        }
+
+        .autocomplete-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 212, 170, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .autocomplete-item:hover {
+            background: rgba(0, 212, 170, 0.2);
+        }
+
+        .autocomplete-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--portal-green);
+            box-shadow: 0 0 10px rgba(0, 212, 170, 0.3);
+        }
+
+        .autocomplete-item-info {
+            flex: 1;
+        }
+
+        .autocomplete-item-name {
+            color: var(--portal-green);
+            font-weight: 700;
+            margin-bottom: 5px;
+            font-size: 1.05em;
+        }
+
+        .autocomplete-item-details {
+            color: #aaa;
+            font-size: 0.9em;
+            display: flex;
+            gap: 10px;
+        }
+
+        .autocomplete-item-details span {
+            background: rgba(0, 212, 170, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--space-blue);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--portal-green);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--portal-green-dark);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Stars Background -->
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🌀 Rick & Morty AI Explorer</h1>
+            <p class="subtitle">Powered by Gemini AI • Explore the Multiverse</p>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="quick-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="stat-locations">-</div>
+                <div class="stat-label">Locations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-characters">-</div>
+                <div class="stat-label">Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-indexed">-</div>
+                <div class="stat-label">Indexed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">∞</div>
+                <div class="stat-label">Dimensions</div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('characters')">🧑 Characters</button>
+            <button class="nav-tab" onclick="switchTab('locations')">🌍 Locations</button>
+            <button class="nav-tab" onclick="switchTab('ai-features')">🤖 AI Features</button>
+            <button class="nav-tab" onclick="switchTab('semantic-search')">🔍 Semantic Search</button>
+            <button class="nav-tab" onclick="switchTab('evaluation')">📊 LLM Evaluation</button>
+        </div>
+
+        <!-- Characters Tab -->
+        <div id="characters" class="tab-content active">
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>Character Search</h2>
+                </div>
+                <p class="section-description">Search for your favorite characters from across the multiverse</p>
+                <div class="search-box">
+                    <div class="autocomplete">
+                        <input type="text" id="character-search" placeholder="Enter character name (e.g., Rick, Morty, Summer)..." autocomplete="off">
+                    </div>
+                    <button onclick="searchCharacters()">🔎 Search</button>
+                    <button onclick="loadAllCharacters()" class="secondary">📋 Load All</button>
+                </div>
+            </div>
+            <div id="characters-grid" class="grid"></div>
+        </div>
+
+        <!-- Locations Tab -->
+        <div id="locations" class="tab-content">
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>Locations</h2>
+                    <button onclick="loadLocations()">Load All</button>
+                </div>
+                <p class="section-description">Explore planets, dimensions, and locations from the Rick and Morty universe</p>
+            </div>
+            <div id="locations-grid" class="grid"></div>
+        </div>
+
+        <!-- AI Features Tab -->
+        <div id="ai-features" class="tab-content">
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>🧬 Location Summary Generator</h2>
+                </div>
+                <p class="section-description">Generate a witty Rick & Morty style narration for any location using Gemini AI</p>
+                <div class="search-box">
+                    <div class="custom-select">
+                        <select id="location-select">
+                            <option value="">🌍 Select a Location...</option>
+                        </select>
+                    </div>
+                    <button onclick="generateLocationSummary()">✨ Generate</button>
+                </div>
+                <div id="location-summary-output"></div>
+            </div>
+
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>💬 Character Dialogue Generator</h2>
+                </div>
+                <p class="section-description">Create authentic conversations between any two characters</p>
+                <div class="search-box">
+                    <div class="custom-select">
+                        <select id="char1-select">
+                            <option value="">👤 Select First Character...</option>
+                        </select>
+                    </div>
+                    <div class="custom-select">
+                        <select id="char2-select">
+                            <option value="">👤 Select Second Character...</option>
+                        </select>
+                    </div>
+                    <button onclick="generateDialogue()">🗣️ Generate</button>
+                </div>
+                <div id="dialogue-output"></div>
+            </div>
+
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>🔬 Character Analysis</h2>
+                </div>
+                <p class="section-description">Get deep AI-powered insights about any character's role and significance</p>
+                <div class="search-box">
+                    <div class="custom-select">
+                        <select id="analysis-char-select">
+                            <option value="">👤 Select a Character...</option>
+                        </select>
+                    </div>
+                    <button onclick="generateCharacterAnalysis()">🧠 Analyze</button>
+                </div>
+                <div id="analysis-output"></div>
+            </div>
+        </div>
+
+        <!-- Semantic Search Tab -->
+        <div id="semantic-search" class="tab-content">
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>🎯 AI-Powered Semantic Search</h2>
+                </div>
+                <p class="section-description">Search characters using natural language. AI understands context and meaning, not just keywords.</p>
+
+                <div class="action-buttons">
+                    <button class="action-btn secondary" onclick="indexCharacters()">⚡ Index Characters</button>
+                    <span style="color: #aaa; align-self: center;">← First time? Click to generate embeddings</span>
+                </div>
+
+                <div class="search-box">
+                    <div class="autocomplete" style="flex: 3;">
+                        <input type="text" id="semantic-query" placeholder="Try: 'genius scientists', 'female warriors', 'characters from Earth'..." autocomplete="off">
+                    </div>
+                    <select id="top-k" style="max-width: 150px;">
+                        <option value="5">5 Results</option>
+                        <option value="10">10 Results</option>
+                        <option value="15">15 Results</option>
+                        <option value="20">20 Results</option>
+                    </select>
+                    <button onclick="performSemanticSearch()">🚀 Search</button>
+                </div>
+                <div id="semantic-results"></div>
+            </div>
+        </div>
+
+        <!-- LLM Evaluation Tab -->
+        <div id="evaluation" class="tab-content">
+            <div class="search-container">
+                <div class="section-header">
+                    <h2>📊 LLM Output Evaluation</h2>
+                </div>
+                <p class="section-description">Measure and compare the quality of AI-generated content using automated scoring metrics</p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <!-- Factual Consistency Evaluation -->
+                    <div style="background: rgba(0, 212, 170, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(0, 212, 170, 0.2);">
+                        <h3 style="color: var(--portal-green); margin-bottom: 15px;">✅ Factual Consistency</h3>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Evaluate if generated text matches source data</p>
+
+                        <div class="custom-select" style="margin-bottom: 15px;">
+                            <select id="eval-location-select">
+                                <option value="">Select Location for Evaluation...</option>
+                            </select>
+                        </div>
+
+                        <button onclick="evaluateFactualConsistency()" style="width: 100%;">🔬 Evaluate Summary</button>
+                        <div id="factual-eval-output" style="margin-top: 15px;"></div>
+                    </div>
+
+                    <!-- Creativity Evaluation -->
+                    <div style="background: rgba(135, 206, 235, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(135, 206, 235, 0.2);">
+                        <h3 style="color: var(--rick-blue); margin-bottom: 15px;">✨ Creativity & Quality</h3>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Evaluate creativity and entertainment value</p>
+
+                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <div class="custom-select" style="flex: 1;">
+                                <select id="eval-char1-select">
+                                    <option value="">Character 1...</option>
+                                </select>
+                            </div>
+                            <div class="custom-select" style="flex: 1;">
+                                <select id="eval-char2-select">
+                                    <option value="">Character 2...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button onclick="evaluateCreativity()" style="width: 100%; background: linear-gradient(135deg, var(--rick-blue) 0%, rgba(135, 206, 235, 0.8) 100%);">🎨 Evaluate Dialogue</button>
+                        <div id="creativity-eval-output" style="margin-top: 15px;"></div>
+                    </div>
+                </div>
+
+                <!-- Comparison Tool -->
+                <div class="search-container" style="margin-top: 30px;">
+                    <div class="section-header">
+                        <h2>⚖️ Compare Multiple Outputs</h2>
+                    </div>
+                    <p class="section-description">Generate and compare multiple AI outputs to find the best quality</p>
+
+                    <div class="custom-select" style="margin-bottom: 15px;">
+                        <select id="compare-location-select">
+                            <option value="">Select Location for Comparison...</option>
+                        </select>
+                    </div>
+
+                    <button onclick="compareOutputs()">🔄 Generate 3 Variations & Compare</button>
+                    <div id="comparison-output" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Detail Modal -->
+    <div id="character-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-character-name"></h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // Create animated stars
+        function createStars() {
+            const stars = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 4 + 's';
+                stars.appendChild(star);
+            }
+        }
+        createStars();
+
+        // Initial stats will be updated when data loads
+        document.getElementById('stat-locations').textContent = '...';
+        document.getElementById('stat-characters').textContent = '...';
+        document.getElementById('stat-indexed').textContent = '0';
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Load locations
+        async function loadLocations() {
+            const grid = document.getElementById('locations-grid');
+            grid.innerHTML = '<div class="loading">Loading locations from across the multiverse</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/locations?include_residents=true`);
+                const data = await response.json();
+
+                if (data.success) {
+                    grid.innerHTML = '';
+                    data.data.forEach(location => {
+                        const card = createLocationCard(location);
+                        grid.appendChild(card);
+                    });
+                } else {
+                    grid.innerHTML = `<div class="error">❌ Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                grid.innerHTML = `<div class="error">❌ Error loading locations: ${error.message}</div>`;
+            }
+        }
+
+        function createLocationCard(location) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-body">
+                    <div class="card-title">🌍 ${location.name}</div>
+                    <div class="card-text"><strong>Type:</strong> ${location.type}</div>
+                    <div class="card-text"><strong>Dimension:</strong> ${location.dimension}</div>
+                    <div class="card-text"><strong>Residents:</strong> ${location.residents.length} inhabitants</div>
+                </div>
+            `;
+            card.onclick = () => showLocationDetails(location);
+            return card;
+        }
+
+        function showLocationDetails(location) {
+            const modal = document.getElementById('character-modal');
+            const modalName = document.getElementById('modal-character-name');
+            const modalBody = document.getElementById('modal-body');
+
+            modalName.textContent = location.name;
+
+            let residentsHTML = '<h3 style="color: var(--portal-green); margin-bottom: 20px;">👥 Residents</h3><div class="grid">';
+            if (location.residents_details && location.residents_details.length > 0) {
+                location.residents_details.forEach(char => {
+                    residentsHTML += `
+                        <div class="card" onclick="showCharacterDetails(${char.id})">
+                            <img src="${char.image}" alt="${char.name}">
+                            <div class="card-body">
+                                <div class="card-title">${char.name}</div>
+                                <span class="badge ${char.status.toLowerCase()}">${char.status}</span>
+                                <div class="card-text">${char.species}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                residentsHTML += '<p>No residents found</p>';
+            }
+            residentsHTML += '</div>';
+
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 30px;">
+                    <p style="font-size: 1.1em; margin-bottom: 10px;"><strong>Type:</strong> ${location.type}</p>
+                    <p style="font-size: 1.1em;"><strong>Dimension:</strong> ${location.dimension}</p>
+                </div>
+                ${residentsHTML}
+            `;
+
+            modal.classList.add('active');
+        }
+
+        // Search characters
+        async function searchCharacters() {
+            const query = document.getElementById('character-search').value.trim();
+            const grid = document.getElementById('characters-grid');
+
+            if (!query) {
+                // If empty, load some default characters
+                loadAllCharacters();
+                return;
+            }
+
+            grid.innerHTML = '<div class="loading">Searching across infinite timelines</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/characters/search?name=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.success && data.data.length > 0) {
+                    grid.innerHTML = '';
+                    data.data.forEach(character => {
+                        const card = createCharacterCard(character);
+                        grid.appendChild(card);
+                    });
+                } else {
+                    grid.innerHTML = '<div class="error">😞 No characters found. Try a different name!</div>';
+                }
+            } catch (error) {
+                grid.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function loadAllCharacters() {
+            const grid = document.getElementById('characters-grid');
+            grid.innerHTML = '<div class="loading">Loading characters from the multiverse</div>';
+
+            try {
+                // Load all cached characters
+                await loadCharacterCache();
+                if (characterCache.length > 0) {
+                    grid.innerHTML = '';
+                    characterCache.forEach(character => {
+                        const card = createCharacterCard(character);
+                        grid.appendChild(card);
+                    });
+                } else {
+                    grid.innerHTML = '<div class="error">No characters available</div>';
+                }
+            } catch (error) {
+                grid.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function createCharacterCard(character) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${character.image}" alt="${character.name}">
+                <div class="card-body">
+                    <div class="card-title">${character.name}</div>
+                    <span class="badge ${character.status.toLowerCase()}">${character.status}</span>
+                    <div class="card-text"><strong>Species:</strong> ${character.species}</div>
+                    <div class="card-text"><strong>Gender:</strong> ${character.gender}</div>
+                    <div class="card-text"><strong>Origin:</strong> ${character.origin.name}</div>
+                </div>
+            `;
+            card.onclick = () => showCharacterDetails(character.id);
+            return card;
+        }
+
+        async function showCharacterDetails(characterId) {
+            const modal = document.getElementById('character-modal');
+            const modalName = document.getElementById('modal-character-name');
+            const modalBody = document.getElementById('modal-body');
+
+            modalBody.innerHTML = '<div class="loading">Loading character data</div>';
+            modal.classList.add('active');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/characters/${characterId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const char = data.data.character;
+                    const notes = data.data.notes;
+
+                    modalName.textContent = char.name;
+
+                    let notesHTML = notes.map(note => `
+                        <div class="note-item">
+                            <p>${note.note}</p>
+                            <p style="color: #888; margin-top: 10px; font-size: 0.9em;">📅 ${new Date(note.created_at).toLocaleString()}</p>
+                        </div>
+                    `).join('');
+
+                    modalBody.innerHTML = `
+                        <div class="character-detail">
+                            <div>
+                                <img src="${char.image}" alt="${char.name}" class="character-image">
+                            </div>
+                            <div class="detail-info">
+                                <p><strong>Status:</strong> <span class="badge ${char.status.toLowerCase()}">${char.status}</span></p>
+                                <p><strong>Species:</strong> ${char.species}</p>
+                                <p><strong>Type:</strong> ${char.type || 'Unknown'}</p>
+                                <p><strong>Gender:</strong> ${char.gender}</p>
+                                <p><strong>Origin:</strong> ${char.origin.name}</p>
+                                <p><strong>Location:</strong> ${char.location.name}</p>
+                                <p><strong>Episodes:</strong> ${char.episode.length} appearances</p>
+                            </div>
+                        </div>
+
+                        <div class="notes-section">
+                            <h3 style="color: var(--portal-green); margin-bottom: 15px;">📝 Notes</h3>
+                            ${notes.length > 0 ? notesHTML : '<p style="color: #888;">No notes yet. Add one below!</p>'}
+
+                            <h4 style="margin: 25px 0 15px 0; color: var(--portal-green);">Add New Note</h4>
+                            <textarea id="new-note" placeholder="Share your insights, theories, or observations about ${char.name}..."></textarea>
+                            <button onclick="addNote(${char.id}, '${char.name.replace(/'/g, "\\'")}')" style="margin-top: 15px;">💾 Save Note</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                modalBody.innerHTML = `<div class="error">❌ Error loading character: ${error.message}</div>`;
+            }
+        }
+
+        async function addNote(characterId, characterName) {
+            const noteText = document.getElementById('new-note').value;
+
+            if (!noteText.trim()) {
+                alert('⚠️ Please enter a note before saving');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character_id: characterId,
+                        character_name: characterName,
+                        note: noteText
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showCharacterDetails(characterId);
+                } else {
+                    alert('❌ Error saving note: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Populate AI Feature Dropdowns
+        async function populateAIDropdowns() {
+            console.log('Populating AI dropdowns...');
+
+            // Load data first
+            await loadCharacterCache();
+            await loadLocationCache();
+
+            console.log('Data loaded - Characters:', characterCache.length, 'Locations:', locationCache.length);
+
+            // Populate location dropdown
+            const locationSelect = document.getElementById('location-select');
+            if (locationSelect && locationCache.length > 0) {
+                // Clear existing options except first
+                locationSelect.innerHTML = '<option value="">🌍 Select a Location...</option>';
+
+                locationCache.forEach(location => {
+                    const option = document.createElement('option');
+                    option.value = location.id;
+                    option.textContent = `${location.name} (${location.type} - ${location.dimension})`;
+                    locationSelect.appendChild(option);
+                });
+                console.log('Location dropdown populated with', locationCache.length, 'options');
+            }
+
+            // Populate character dropdowns
+            const charSelects = [
+                { id: 'char1-select', label: '👤 Select First Character...' },
+                { id: 'char2-select', label: '👤 Select Second Character...' },
+                { id: 'analysis-char-select', label: '👤 Select a Character...' }
+            ];
+
+            charSelects.forEach(selectInfo => {
+                const select = document.getElementById(selectInfo.id);
+                if (select && characterCache.length > 0) {
+                    // Clear existing options except first
+                    select.innerHTML = `<option value="">${selectInfo.label}</option>`;
+
+                    characterCache.forEach(character => {
+                        const option = document.createElement('option');
+                        option.value = character.id;
+                        option.textContent = `${character.name} (${character.species} - ${character.status})`;
+                        select.appendChild(option);
+                    });
+                    console.log(selectInfo.id, 'populated with', characterCache.length, 'options');
+                }
+            });
+        }
+
+        // AI Features
+        async function generateLocationSummary() {
+            const locationId = document.getElementById('location-select').value;
+            const output = document.getElementById('location-summary-output');
+
+            if (!locationId) {
+                output.innerHTML = '<div class="error">⚠️ Please select a location from the dropdown</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Generating witty narration...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/ai/location-summary/${locationId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    output.innerHTML = `
+                        <div class="ai-output">
+                            <h3>🌍 ${data.data.location.name}</h3>
+                            <p style="line-height: 1.8; margin-top: 15px;">${data.data.summary}</p>
+                        </div>
+                    `;
+                } else {
+                    output.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function generateDialogue() {
+            const char1Id = document.getElementById('char1-select').value;
+            const char2Id = document.getElementById('char2-select').value;
+            const output = document.getElementById('dialogue-output');
+
+            if (!char1Id || !char2Id) {
+                output.innerHTML = '<div class="error">⚠️ Please select both characters from the dropdown</div>';
+                return;
+            }
+
+            if (char1Id === char2Id) {
+                output.innerHTML = '<div class="error">⚠️ Please select two different characters</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Creating authentic dialogue...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/ai/character-dialogue`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character1_id: parseInt(char1Id),
+                        character2_id: parseInt(char2Id)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    output.innerHTML = `
+                        <div class="ai-output">
+                            <h3 style="margin-bottom: 30px;">💬 Conversation</h3>
+
+                            <!-- Character Images -->
+                            ${data.data.character1_image || data.data.character2_image ? `
+                                <div style="display: flex; gap: 40px; justify-content: center; align-items: center; margin-bottom: 30px;">
+                                    ${data.data.character1_image ? `
+                                        <div style="text-align: center; flex: 0 0 auto;">
+                                            <img src="${data.data.character1_image}"
+                                                 alt="${data.data.character1.name}"
+                                                 style="width: 180px; height: 180px; object-fit: cover; border-radius: 50%; border: 4px solid var(--portal-green); box-shadow: 0 0 30px rgba(0, 212, 170, 0.6); display: block; margin: 0 auto;">
+                                            <p style="margin-top: 15px; color: var(--portal-green); font-weight: bold; font-size: 1.1em;">${data.data.character1.name}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${data.data.character2_image ? `
+                                        <div style="text-align: center; flex: 0 0 auto;">
+                                            <img src="${data.data.character2_image}"
+                                                 alt="${data.data.character2.name}"
+                                                 style="width: 180px; height: 180px; object-fit: cover; border-radius: 50%; border: 4px solid var(--rick-blue); box-shadow: 0 0 30px rgba(135, 206, 235, 0.6); display: block; margin: 0 auto;">
+                                            <p style="margin-top: 15px; color: var(--rick-blue); font-weight: bold; font-size: 1.1em;">${data.data.character2.name}</p>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+
+                            <!-- Dialogue Text -->
+                            <div style="background: rgba(0,0,0,0.4); padding: 30px; border-radius: 15px; border: 1px solid rgba(0, 212, 170, 0.3);">
+                                <p style="line-height: 2; white-space: pre-wrap; font-size: 1.05em; color: #e0e0e0;">${data.data.dialogue}</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    output.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function generateCharacterAnalysis() {
+            const charId = document.getElementById('analysis-char-select').value;
+            const output = document.getElementById('analysis-output');
+
+            if (!charId) {
+                output.innerHTML = '<div class="error">⚠️ Please select a character from the dropdown</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Analyzing character</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/ai/character-analysis/${charId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    output.innerHTML = `
+                        <div class="ai-output">
+                            <h3>🔬 ${data.data.character.name}</h3>
+                            <p style="line-height: 1.8; margin-top: 15px;">${data.data.analysis}</p>
+                        </div>
+                    `;
+                } else {
+                    output.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Semantic Search
+        async function indexCharacters() {
+            const resultsDiv = document.getElementById('semantic-results');
+            resultsDiv.innerHTML = '<div class="loading">Indexing characters with AI embeddings. This may take a minute</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/search/index-characters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('stat-indexed').textContent = data.indexed_count;
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Successfully indexed ${data.indexed_count} characters!
+                            ${data.errors.length > 0 ? `<br>⚠️ ${data.errors.length} errors encountered` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function performSemanticSearch() {
+            const query = document.getElementById('semantic-query').value;
+            const topK = document.getElementById('top-k').value || 5;
+            const resultsDiv = document.getElementById('semantic-results');
+
+            if (!query) {
+                resultsDiv.innerHTML = '<div class="error">⚠️ Please enter a search query</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading">Searching with AI embeddings</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/search/semantic`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, top_k: parseInt(topK) })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data.length > 0) {
+                    let html = '<div class="grid">';
+                    data.data.forEach(result => {
+                        const char = result.character;
+                        const similarity = (result.similarity * 100).toFixed(1);
+                        html += `
+                            <div class="card" onclick="showCharacterDetails(${char.id})">
+                                <img src="${char.image}" alt="${char.name}">
+                                <div class="card-body">
+                                    <div class="card-title">${char.name}</div>
+                                    <span class="badge ${char.status.toLowerCase()}">${char.status}</span>
+                                    <div class="card-text"><strong>Match:</strong> ${similarity}%</div>
+                                    <div class="card-text">${char.species} • ${char.gender}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div class="info">💡 No results found. Make sure you have indexed characters first!</div>';
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('character-modal').classList.remove('active');
+        }
+
+        // Close modal on outside click
+        document.getElementById('character-modal').onclick = function(event) {
+            if (event.target === this) {
+                closeModal();
+            }
+        };
+
+        // Enter key support
+        document.getElementById('character-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchCharacters();
+        });
+
+        document.getElementById('semantic-query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') performSemanticSearch();
+        });
+
+        // Autocomplete functionality
+        let characterCache = [];
+        let locationCache = [];
+
+        async function loadCharacterCache() {
+            if (characterCache.length > 0) return;
+            try {
+                // Load popular characters
+                const response = await fetch(`${API_BASE}/api/characters/search?name=Rick`);
+                const data = await response.json();
+                if (data.success && data.data.length > 0) {
+                    characterCache = data.data;
+
+                    // Load more characters
+                    const response2 = await fetch(`${API_BASE}/api/characters/search?name=Morty`);
+                    const data2 = await response2.json();
+                    if (data2.success && data2.data.length > 0) {
+                        data2.data.forEach(char => {
+                            if (!characterCache.find(c => c.id === char.id)) {
+                                characterCache.push(char);
+                            }
+                        });
+                    }
+
+                    // Load more characters
+                    const response3 = await fetch(`${API_BASE}/api/characters/search?name=Smith`);
+                    const data3 = await response3.json();
+                    if (data3.success && data3.data.length > 0) {
+                        data3.data.forEach(char => {
+                            if (!characterCache.find(c => c.id === char.id)) {
+                                characterCache.push(char);
+                            }
+                        });
+                    }
+
+                    console.log('Loaded characters:', characterCache.length);
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading character cache:', error);
+            }
+        }
+
+        async function loadLocationCache() {
+            if (locationCache.length > 0) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/locations`);
+                const data = await response.json();
+                if (data.success && data.data.length > 0) {
+                    locationCache = data.data;
+                    console.log('Loaded locations:', locationCache.length);
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading location cache:', error);
+            }
+        }
+
+        function updateStats() {
+            if (locationCache.length > 0) {
+                document.getElementById('stat-locations').textContent = locationCache.length;
+            }
+            if (characterCache.length > 0) {
+                document.getElementById('stat-characters').textContent = characterCache.length;
+            }
+        }
+
+        function setupAutocomplete(inputId, hiddenId, type) {
+            const input = document.getElementById(inputId);
+            const hidden = document.getElementById(hiddenId);
+
+            input.addEventListener('input', async function() {
+                closeAllLists();
+                const val = this.value.trim();
+                if (!val) return;
+
+                // Load cache if needed
+                if (type === 'character') await loadCharacterCache();
+                if (type === 'location') await loadLocationCache();
+
+                const items = type === 'character' ? characterCache : locationCache;
+                const filtered = items.filter(item =>
+                    item.name.toLowerCase().includes(val.toLowerCase())
+                ).slice(0, 10);
+
+                if (filtered.length === 0) return;
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'autocomplete-items';
+                input.parentNode.appendChild(listDiv);
+
+                filtered.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'autocomplete-item';
+
+                    if (type === 'character') {
+                        itemDiv.innerHTML = `
+                            <img src="${item.image}" alt="${item.name}">
+                            <div class="autocomplete-item-info">
+                                <div class="autocomplete-item-name">${item.name}</div>
+                                <div class="autocomplete-item-details">${item.species} • ${item.status}</div>
+                            </div>
+                        `;
+                    } else {
+                        itemDiv.innerHTML = `
+                            <div class="autocomplete-item-info">
+                                <div class="autocomplete-item-name">🌍 ${item.name}</div>
+                                <div class="autocomplete-item-details">${item.type} • ${item.dimension}</div>
+                            </div>
+                        `;
+                    }
+
+                    itemDiv.addEventListener('click', function() {
+                        input.value = item.name;
+                        hidden.value = item.id;
+                        closeAllLists();
+                    });
+
+                    listDiv.appendChild(itemDiv);
+                });
+            });
+
+            // Close lists when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target !== input) {
+                    closeAllLists();
+                }
+            });
+        }
+
+        function closeAllLists() {
+            const items = document.getElementsByClassName('autocomplete-items');
+            for (let i = 0; i < items.length; i++) {
+                items[i].parentNode.removeChild(items[i]);
+            }
+        }
+
+        // Setup special autocomplete for main character search (no hidden field)
+        function setupCharacterSearchAutocomplete() {
+            const input = document.getElementById('character-search');
+
+            input.addEventListener('input', async function() {
+                closeAllLists();
+                const val = this.value.trim();
+                if (!val) return;
+
+                await loadCharacterCache();
+                const filtered = characterCache.filter(item =>
+                    item.name.toLowerCase().includes(val.toLowerCase())
+                ).slice(0, 10);
+
+                if (filtered.length === 0) return;
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'autocomplete-items';
+                input.parentNode.appendChild(listDiv);
+
+                filtered.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'autocomplete-item';
+                    itemDiv.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}">
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">${item.name}</div>
+                            <div class="autocomplete-item-details">
+                                <span>${item.species}</span>
+                                <span>${item.status}</span>
+                                <span>${item.gender}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    itemDiv.addEventListener('click', function() {
+                        input.value = item.name;
+                        closeAllLists();
+                        searchCharacters();
+                    });
+
+                    listDiv.appendChild(itemDiv);
+                });
+            });
+        }
+
+        // Setup special autocomplete for semantic search
+        function setupSemanticSearchAutocomplete() {
+            const input = document.getElementById('semantic-query');
+
+            // Predefined semantic search suggestions
+            const suggestions = [
+                { query: 'genius scientists', desc: 'Find brilliant scientific minds' },
+                { query: 'female warriors', desc: 'Strong female characters' },
+                { query: 'characters from Earth', desc: 'Earth-based characters' },
+                { query: 'alien species', desc: 'Non-human characters' },
+                { query: 'family members', desc: 'Smith family relatives' },
+                { query: 'villains and antagonists', desc: 'Evil or opposing characters' },
+                { query: 'dead characters', desc: 'Characters who have died' },
+                { query: 'interdimensional beings', desc: 'Cross-dimensional characters' },
+            ];
+
+            input.addEventListener('focus', function() {
+                closeAllLists();
+                const val = this.value.trim();
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'autocomplete-items';
+                input.parentNode.appendChild(listDiv);
+
+                const filtered = val ?
+                    suggestions.filter(s => s.query.toLowerCase().includes(val.toLowerCase())) :
+                    suggestions;
+
+                filtered.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'autocomplete-item';
+                    itemDiv.innerHTML = `
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">💡 ${item.query}</div>
+                            <div class="autocomplete-item-details">${item.desc}</div>
+                        </div>
+                    `;
+
+                    itemDiv.addEventListener('click', function() {
+                        input.value = item.query;
+                        closeAllLists();
+                    });
+
+                    listDiv.appendChild(itemDiv);
+                });
+            });
+
+            input.addEventListener('input', function() {
+                closeAllLists();
+                const val = this.value.trim();
+                if (!val) return;
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'autocomplete-items';
+                input.parentNode.appendChild(listDiv);
+
+                const filtered = suggestions.filter(s =>
+                    s.query.toLowerCase().includes(val.toLowerCase())
+                );
+
+                filtered.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'autocomplete-item';
+                    itemDiv.innerHTML = `
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">💡 ${item.query}</div>
+                            <div class="autocomplete-item-details">${item.desc}</div>
+                        </div>
+                    `;
+
+                    itemDiv.addEventListener('click', function() {
+                        input.value = item.query;
+                        closeAllLists();
+                    });
+
+                    listDiv.appendChild(itemDiv);
+                });
+            });
+        }
+
+        // LLM Evaluation Functions
+        async function evaluateFactualConsistency() {
+            const locationId = document.getElementById('eval-location-select').value;
+            const output = document.getElementById('factual-eval-output');
+
+            if (!locationId) {
+                output.innerHTML = '<div class="error">⚠️ Please select a location</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Generating and evaluating summary</div>';
+
+            try {
+                // First generate the summary
+                const summaryResponse = await fetch(`${API_BASE}/api/ai/location-summary/${locationId}`);
+                const summaryData = await summaryResponse.json();
+
+                if (!summaryData.success) {
+                    output.innerHTML = `<div class="error">❌ ${summaryData.error}</div>`;
+                    return;
+                }
+
+                const generatedText = summaryData.data.summary;
+                const location = summaryData.data.location;
+
+                // Evaluate using Gemini
+                const evalResponse = await fetch(`${API_BASE}/api/ai/eval/factual-consistency`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        generated_text: generatedText,
+                        source_data: location
+                    })
+                });
+
+                const evalData = await evalResponse.json();
+
+                if (evalData.success) {
+                    const score = evalData.data.score;
+                    const scoreColor = score >= 8 ? 'var(--success-green)' : score >= 5 ? 'var(--morty-yellow)' : 'var(--danger-red)';
+
+                    output.innerHTML = `
+                        <div class="ai-output">
+                            <h4 style="color: var(--portal-green); margin-bottom: 10px;">Generated Summary:</h4>
+                            <p style="margin-bottom: 20px; color: #ccc;">${generatedText}</p>
+
+                            <h4 style="color: var(--portal-green); margin-bottom: 10px;">Evaluation Results:</h4>
+                            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                                <div style="font-size: 2em; color: ${scoreColor}; font-weight: 700; margin-bottom: 10px;">
+                                    Score: ${score}/10
+                                </div>
+                                <p style="margin-bottom: 10px;"><strong>Reasoning:</strong> ${evalData.data.reasoning}</p>
+                                ${Object.entries(evalData.data.details).map(([key, value]) =>
+                                    `<p style="margin: 5px 0;"><strong>${key}:</strong> ${value}</p>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    output.innerHTML = `<div class="error">❌ ${evalData.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function evaluateCreativity() {
+            const char1Id = document.getElementById('eval-char1-select').value;
+            const char2Id = document.getElementById('eval-char2-select').value;
+            const output = document.getElementById('creativity-eval-output');
+
+            if (!char1Id || !char2Id) {
+                output.innerHTML = '<div class="error">⚠️ Please select both characters</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Generating and evaluating dialogue</div>';
+
+            try {
+                // Generate dialogue
+                const dialogueResponse = await fetch(`${API_BASE}/api/ai/character-dialogue`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character1_id: parseInt(char1Id),
+                        character2_id: parseInt(char2Id)
+                    })
+                });
+
+                const dialogueData = await dialogueResponse.json();
+
+                if (!dialogueData.success) {
+                    output.innerHTML = `<div class="error">❌ ${dialogueData.error}</div>`;
+                    return;
+                }
+
+                const generatedText = dialogueData.data.dialogue;
+
+                // Evaluate creativity
+                const evalResponse = await fetch(`${API_BASE}/api/ai/eval/creativity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ generated_text: generatedText })
+                });
+
+                const evalData = await evalResponse.json();
+
+                if (evalData.success) {
+                    const score = evalData.data.score;
+                    const scoreColor = score >= 8 ? 'var(--success-green)' : score >= 5 ? 'var(--morty-yellow)' : 'var(--danger-red)';
+
+                    output.innerHTML = `
+                        <div class="ai-output" style="border-color: var(--rick-blue);">
+                            <h4 style="color: var(--rick-blue); margin-bottom: 10px;">Generated Dialogue:</h4>
+                            <p style="margin-bottom: 20px; white-space: pre-wrap; color: #ccc;">${generatedText}</p>
+
+                            <h4 style="color: var(--rick-blue); margin-bottom: 10px;">Creativity Evaluation:</h4>
+                            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                                <div style="font-size: 2em; color: ${scoreColor}; font-weight: 700; margin-bottom: 10px;">
+                                    Score: ${score}/10
+                                </div>
+                                <p style="margin-bottom: 10px;"><strong>Reasoning:</strong> ${evalData.data.reasoning}</p>
+                                ${Object.entries(evalData.data.details).map(([key, value]) =>
+                                    `<p style="margin: 5px 0;"><strong>${key}:</strong> ${value}</p>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    output.innerHTML = `<div class="error">❌ ${evalData.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function compareOutputs() {
+            const locationId = document.getElementById('compare-location-select').value;
+            const output = document.getElementById('comparison-output');
+
+            if (!locationId) {
+                output.innerHTML = '<div class="error">⚠️ Please select a location</div>';
+                return;
+            }
+
+            output.innerHTML = '<div class="loading">Generating 3 variations and comparing quality</div>';
+
+            try {
+                // Generate 3 variations
+                const summaries = [];
+                for (let i = 0; i < 3; i++) {
+                    const response = await fetch(`${API_BASE}/api/ai/location-summary/${locationId}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        summaries.push({
+                            text: data.data.summary,
+                            location: data.data.location
+                        });
+                    }
+                }
+
+                // Evaluate each
+                const evaluations = await Promise.all(summaries.map(async (summary, idx) => {
+                    const evalResponse = await fetch(`${API_BASE}/api/ai/eval/factual-consistency`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            generated_text: summary.text,
+                            source_data: summary.location
+                        })
+                    });
+                    const evalData = await evalResponse.json();
+                    return {
+                        index: idx + 1,
+                        text: summary.text,
+                        score: evalData.success ? evalData.data.score : 0,
+                        reasoning: evalData.success ? evalData.data.reasoning : 'Evaluation failed'
+                    };
+                }));
+
+                // Sort by score
+                evaluations.sort((a, b) => b.score - a.score);
+
+                output.innerHTML = `
+                    <div style="display: grid; gap: 20px;">
+                        ${evaluations.map((eval, idx) => {
+                            const rank = idx + 1;
+                            const rankColor = rank === 1 ? 'gold' : rank === 2 ? 'silver' : '#cd7f32';
+                            const scoreColor = eval.score >= 8 ? 'var(--success-green)' : eval.score >= 5 ? 'var(--morty-yellow)' : 'var(--danger-red)';
+                            return `
+                                <div class="ai-output" style="position: relative;">
+                                    <div style="position: absolute; top: 10px; right: 10px; background: ${rankColor}; color: black; padding: 5px 15px; border-radius: 20px; font-weight: 700;">
+                                        #${rank}
+                                    </div>
+                                    <h4 style="color: var(--portal-green); margin-bottom: 10px;">Variation ${eval.index}</h4>
+                                    <p style="margin-bottom: 15px; color: #ccc;">${eval.text}</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                                        <div>
+                                            <strong style="color: ${scoreColor};">Score: ${eval.score}/10</strong>
+                                        </div>
+                                        <div style="font-size: 0.9em; color: #aaa;">
+                                            ${eval.reasoning.substring(0, 100)}...
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Populate evaluation dropdowns
+        async function populateEvaluationDropdowns() {
+            await loadCharacterCache();
+            await loadLocationCache();
+
+            // Populate evaluation location dropdown
+            const evalLocationSelect = document.getElementById('eval-location-select');
+            const compareLocationSelect = document.getElementById('compare-location-select');
+
+            [evalLocationSelect, compareLocationSelect].forEach(select => {
+                if (select && locationCache.length > 0) {
+                    locationCache.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.id;
+                        option.textContent = `${location.name} (${location.type})`;
+                        select.appendChild(option);
+                    });
+                }
+            });
+
+            // Populate evaluation character dropdowns
+            const evalChar1Select = document.getElementById('eval-char1-select');
+            const evalChar2Select = document.getElementById('eval-char2-select');
+
+            [evalChar1Select, evalChar2Select].forEach(select => {
+                if (select && characterCache.length > 0) {
+                    characterCache.forEach(character => {
+                        const option = document.createElement('option');
+                        option.value = character.id;
+                        option.textContent = `${character.name} (${character.species})`;
+                        select.appendChild(option);
+                    });
+                }
+            });
+        }
+
+        // Initialize application
+        async function initializeApp() {
+            console.log('Initializing application...');
+
+            // Load data first
+            await Promise.all([
+                loadCharacterCache(),
+                loadLocationCache()
+            ]);
+
+            // Then populate dropdowns
+            await populateAIDropdowns();
+            await populateEvaluationDropdowns();
+
+            // Setup autocomplete
+            setupCharacterSearchAutocomplete();
+            setupSemanticSearchAutocomplete();
+
+            // Load initial character display
+            loadAllCharacters();
+
+            console.log('Application initialized!');
+        }
+
+        // Start the app
+        initializeApp();
+    </script>
+</body>
+</html>

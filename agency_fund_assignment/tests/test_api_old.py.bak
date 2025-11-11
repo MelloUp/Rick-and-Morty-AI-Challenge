@@ -1,0 +1,522 @@
+"""
+Comprehensive test suite for Rick & Morty API endpoints.
+Tests all API functionality with valid and edge case scenarios.
+"""
+import pytest
+import json
+from app import app, db
+from database import Database
+import os
+
+
+@pytest.fixture
+def client():
+    """Create a test client for the Flask app."""
+    app.config['TESTING'] = True
+    # Use a separate test database
+    test_db_path = "test_rick_and_morty.db"
+
+    # Remove test database if exists
+    if os.path.exists(test_db_path):
+        os.remove(test_db_path)
+
+    # Initialize test database
+    test_db = Database(test_db_path)
+
+    with app.test_client() as client:
+        yield client
+
+    # Cleanup
+    if os.path.exists(test_db_path):
+        os.remove(test_db_path)
+
+
+class TestHealthEndpoint:
+    """Test health check endpoint."""
+
+    def test_health_check(self, client):
+        """Test health check returns success."""
+        response = client.get('/api/health')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['status'] == 'healthy'
+        assert 'gemini_available' in data
+
+
+class TestLocationEndpoints:
+    """Test location-related endpoints."""
+
+    def test_get_all_locations(self, client):
+        """Test fetching all locations."""
+        response = client.get('/api/locations')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'data' in data
+        assert 'count' in data
+        assert isinstance(data['data'], list)
+        assert data['count'] > 0
+
+    def test_get_locations_with_residents(self, client):
+        """Test fetching locations with resident details."""
+        response = client.get('/api/locations?include_residents=true')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert isinstance(data['data'], list)
+
+        # Check if residents_details is included
+        if len(data['data']) > 0:
+            first_location = data['data'][0]
+            assert 'residents_details' in first_location
+
+    def test_get_specific_location(self, client):
+        """Test fetching a specific location by ID."""
+        response = client.get('/api/locations/1')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'data' in data
+        assert data['data']['id'] == 1
+        assert 'name' in data['data']
+        assert 'type' in data['data']
+        assert 'residents_details' in data['data']
+
+    def test_get_invalid_location(self, client):
+        """Test fetching a non-existent location."""
+        response = client.get('/api/locations/99999')
+        assert response.status_code == 404
+
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'error' in data
+
+    def test_get_location_zero(self, client):
+        """Test edge case: location ID 0."""
+        response = client.get('/api/locations/0')
+        assert response.status_code == 404
+
+
+class TestCharacterEndpoints:
+    """Test character-related endpoints."""
+
+    def test_get_character_by_id(self, client):
+        """Test fetching a specific character."""
+        response = client.get('/api/characters/1')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'character' in data['data']
+        assert 'notes' in data['data']
+        assert data['data']['character']['id'] == 1
+
+    def test_get_invalid_character(self, client):
+        """Test fetching a non-existent character."""
+        response = client.get('/api/characters/99999')
+        assert response.status_code == 404
+
+        data = json.loads(response.data)
+        assert data['success'] is False
+
+    def test_search_characters_by_name(self, client):
+        """Test searching characters by name."""
+        response = client.get('/api/characters/search?name=Rick')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert isinstance(data['data'], list)
+        assert data['count'] > 0
+
+        # Verify results contain 'Rick' in name
+        for char in data['data']:
+            assert 'rick' in char['name'].lower()
+
+    def test_search_characters_no_query(self, client):
+        """Test search with empty query."""
+        response = client.get('/api/characters/search')
+        assert response.status_code == 400
+
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'error' in data
+
+    def test_search_characters_no_results(self, client):
+        """Test search with no matching results."""
+        response = client.get('/api/characters/search?name=XYZNonexistentName123')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['count'] == 0
+        assert len(data['data']) == 0
+
+
+class TestNotesEndpoints:
+    """Test notes CRUD operations."""
+
+    def test_add_note(self, client):
+        """Test adding a note for a character."""
+        note_data = {
+            'character_id': 1,
+            'character_name': 'Rick Sanchez',
+            'note': 'Genius scientist with alcohol problems'
+        }
+
+        response = client.post(
+            '/api/notes',
+            data=json.dumps(note_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'note_id' in data
+        assert isinstance(data['note_id'], int)
+
+    def test_add_note_missing_fields(self, client):
+        """Test adding note with missing required fields."""
+        note_data = {
+            'character_id': 1,
+            'note': 'Some note'
+            # Missing character_name
+        }
+
+        response = client.post(
+            '/api/notes',
+            data=json.dumps(note_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'error' in data
+
+    def test_get_notes_for_character(self, client):
+        """Test retrieving notes for a character."""
+        # First add a note
+        note_data = {
+            'character_id': 2,
+            'character_name': 'Morty Smith',
+            'note': 'Often reluctant sidekick'
+        }
+        client.post('/api/notes', data=json.dumps(note_data), content_type='application/json')
+
+        # Then retrieve notes
+        response = client.get('/api/notes/2')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert isinstance(data['data'], list)
+        assert data['count'] > 0
+
+    def test_get_notes_no_notes(self, client):
+        """Test getting notes for character with no notes."""
+        response = client.get('/api/notes/999')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['count'] == 0
+        assert len(data['data']) == 0
+
+    def test_update_note(self, client):
+        """Test updating an existing note."""
+        # First add a note
+        note_data = {
+            'character_id': 3,
+            'character_name': 'Summer Smith',
+            'note': 'Original note'
+        }
+        add_response = client.post('/api/notes', data=json.dumps(note_data), content_type='application/json')
+        note_id = json.loads(add_response.data)['note_id']
+
+        # Update the note
+        update_data = {'note': 'Updated note content'}
+        response = client.put(
+            f'/api/notes/{note_id}',
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+
+    def test_update_nonexistent_note(self, client):
+        """Test updating a note that doesn't exist."""
+        update_data = {'note': 'Updated note'}
+        response = client.put(
+            '/api/notes/99999',
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['success'] is False
+
+    def test_delete_note(self, client):
+        """Test deleting a note."""
+        # First add a note
+        note_data = {
+            'character_id': 4,
+            'character_name': 'Beth Smith',
+            'note': 'Note to delete'
+        }
+        add_response = client.post('/api/notes', data=json.dumps(note_data), content_type='application/json')
+        note_id = json.loads(add_response.data)['note_id']
+
+        # Delete the note
+        response = client.delete(f'/api/notes/{note_id}')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+
+    def test_delete_nonexistent_note(self, client):
+        """Test deleting a note that doesn't exist."""
+        response = client.delete('/api/notes/99999')
+        assert response.status_code == 404
+
+        data = json.loads(response.data)
+        assert data['success'] is False
+
+
+class TestAIEndpoints:
+    """Test AI/generative endpoints."""
+
+    def test_location_summary_endpoint_structure(self, client):
+        """Test location summary endpoint structure (may fail if API key not set)."""
+        response = client.get('/api/ai/location-summary/1')
+
+        # Should return either success or service unavailable
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+            assert 'data' in data
+            assert 'summary' in data['data']
+        else:
+            # Gemini not configured
+            assert data['success'] is False
+            assert 'error' in data
+
+    def test_character_dialogue_endpoint_structure(self, client):
+        """Test character dialogue endpoint structure."""
+        dialogue_data = {
+            'character1_id': 1,
+            'character2_id': 2
+        }
+
+        response = client.post(
+            '/api/ai/character-dialogue',
+            data=json.dumps(dialogue_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+            assert 'dialogue' in data['data']
+        else:
+            assert data['success'] is False
+
+    def test_character_dialogue_missing_fields(self, client):
+        """Test dialogue endpoint with missing character IDs."""
+        dialogue_data = {
+            'character1_id': 1
+            # Missing character2_id
+        }
+
+        response = client.post(
+            '/api/ai/character-dialogue',
+            data=json.dumps(dialogue_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [400, 503]
+
+    def test_character_analysis_endpoint(self, client):
+        """Test character analysis endpoint."""
+        response = client.get('/api/ai/character-analysis/1')
+
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+            assert 'analysis' in data['data']
+
+
+class TestSemanticSearchEndpoints:
+    """Test semantic search endpoints."""
+
+    def test_index_characters_endpoint(self, client):
+        """Test character indexing endpoint."""
+        response = client.post(
+            '/api/search/index-characters',
+            data=json.dumps({}),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+            assert 'indexed_count' in data
+
+    def test_semantic_search_missing_query(self, client):
+        """Test semantic search without query."""
+        response = client.post(
+            '/api/search/semantic',
+            data=json.dumps({}),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [400, 503]
+
+
+class TestEvaluationEndpoints:
+    """Test LLM evaluation endpoints."""
+
+    def test_factual_consistency_endpoint(self, client):
+        """Test factual consistency evaluation endpoint."""
+        eval_data = {
+            'generated_text': 'Rick is a scientist who travels between dimensions.',
+            'source_data': {
+                'name': 'Rick Sanchez',
+                'species': 'Human',
+                'occupation': 'Scientist'
+            }
+        }
+
+        response = client.post(
+            '/api/eval/factual-consistency',
+            data=json.dumps(eval_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+            assert 'data' in data
+
+    def test_creativity_evaluation_endpoint(self, client):
+        """Test creativity evaluation endpoint."""
+        eval_data = {
+            'generated_text': 'Wubba lubba dub dub! Rick exclaimed as he burped loudly.'
+        }
+
+        response = client.post(
+            '/api/eval/creativity',
+            data=json.dumps(eval_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code in [200, 503]
+
+        data = json.loads(response.data)
+        if response.status_code == 200:
+            assert data['success'] is True
+
+
+class TestEdgeCases:
+    """Test edge cases and corner scenarios."""
+
+    def test_negative_character_id(self, client):
+        """Test negative character ID."""
+        response = client.get('/api/characters/-1')
+        assert response.status_code == 404
+
+    def test_very_large_character_id(self, client):
+        """Test extremely large character ID."""
+        response = client.get('/api/characters/999999999')
+        assert response.status_code == 404
+
+    def test_special_characters_in_search(self, client):
+        """Test search with special characters."""
+        response = client.get('/api/characters/search?name=@#$%')
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['count'] == 0
+
+    def test_empty_note_content(self, client):
+        """Test adding an empty note."""
+        note_data = {
+            'character_id': 1,
+            'character_name': 'Rick Sanchez',
+            'note': ''
+        }
+
+        response = client.post(
+            '/api/notes',
+            data=json.dumps(note_data),
+            content_type='application/json'
+        )
+
+        # Should still accept empty notes
+        assert response.status_code == 201
+
+    def test_very_long_note(self, client):
+        """Test adding a very long note."""
+        note_data = {
+            'character_id': 1,
+            'character_name': 'Rick Sanchez',
+            'note': 'A' * 10000  # 10k characters
+        }
+
+        response = client.post(
+            '/api/notes',
+            data=json.dumps(note_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 201
+
+    def test_unicode_in_notes(self, client):
+        """Test Unicode characters in notes."""
+        note_data = {
+            'character_id': 1,
+            'character_name': 'Rick Sanchez',
+            'note': 'Testing Unicode: 你好 🚀 café'
+        }
+
+        response = client.post(
+            '/api/notes',
+            data=json.dumps(note_data),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 201
+
+    def test_malformed_json(self, client):
+        """Test endpoint with malformed JSON."""
+        response = client.post(
+            '/api/notes',
+            data='{"invalid json',
+            content_type='application/json'
+        )
+
+        assert response.status_code in [400, 500]
+
+
+if __name__ == '__main__':
+    pytest.main([__file__, '-v'])
